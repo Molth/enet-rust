@@ -1,0 +1,15 @@
+[package]
+name = "enet-rust"
+version = "0.1.0"
+edition = "2021"
+
+description = "High performance pure safe-rust enet implementation."
+license = "MIT"
+authors = ["Molth Nevin"]
+repository = "https://github.com/Molth/enet-rust"
+documentation = "https://github.com/lsalzman/enet"
+readme = "README.md"
+keywords = ["enet", "networking", "reliable", "udp", "protocol"]
+categories = ["network-programming"]
+
+[dependencies]
