@@ -5,8 +5,10 @@
 use crate::h_protocol::*;
 use crate::h_win32::ENetBuffer;
 use std::any::Any;
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, UdpSocket};
+use std::rc::Rc;
 
 pub const ENET_VERSION_MAJOR: u32 = 1;
 pub const ENET_VERSION_MINOR: u32 = 3;
@@ -178,10 +180,11 @@ pub enum ENetPacketFlag {
     ENET_PACKET_FLAG_SENT = 1 << 8,
 }
 
+#[derive(Default)]
 pub struct ENetPacket {
     pub referenceCount: usize,
     pub flags: u32,
-    pub data: Vec<u8>,
+    pub data: Option<Rc<RefCell<Box<[u8]>>>>,
     pub freeCallback: Option<fn()>,
     pub userData: Option<fn(Box<dyn Any>)>,
 }
@@ -274,8 +277,8 @@ pub enum ENetPeerFlag {
     ENET_PEER_FLAG_CONTINUE_SENDING = 1 << 1,
 }
 
-pub struct ENetPeer<'a> {
-    pub host: &'a mut ENetHost<'a>,
+pub struct ENetPeer {
+    pub host: Rc<RefCell<ENetHost>>,
     pub outgoingPeerID: u16,
     pub incomingPeerID: u16,
     pub connectID: u32,
@@ -338,14 +341,16 @@ pub struct ENetPeer<'a> {
 
 pub struct ENetCompressor {
     pub context: Option<Box<dyn Any>>,
-    pub compress: Option<fn(Option<Box<dyn Any>>, &mut [Vec<u8>], usize, usize, &mut [u8], usize) -> usize>,
+    pub compress: Option<
+        fn(Option<Box<dyn Any>>, &mut [ENetBuffer], usize, usize, &mut [u8], usize) -> usize,
+    >,
     pub decompress: Option<fn(Option<&Box<dyn Any>>, &[u8], usize, &mut [u8], usize) -> usize>,
     pub destroy: Option<fn(Option<Box<dyn Any>>)>,
 }
 
 impl ENetCompressor {
     pub fn new() -> ENetCompressor {
-        ENetCompressor{
+        ENetCompressor {
             context: None,
             compress: None,
             decompress: None,
@@ -354,7 +359,7 @@ impl ENetCompressor {
     }
 }
 
-pub struct ENetHost<'a> {
+pub struct ENetHost {
     pub socket: UdpSocket,
     pub address: ENetAddress,
     pub incomingBandwidth: u32,
@@ -363,18 +368,18 @@ pub struct ENetHost<'a> {
     pub mtu: u32,
     pub randomSeed: u32,
     pub recalculateBandwidthLimits: i32,
-    pub peers: Vec<ENetPeer<'a>>,
+    pub peers: Vec<ENetPeer>,
     pub channelLimit: usize,
     pub serviceTime: u32,
-    pub dispatchQueue: Vec<u16>,
+    pub dispatchQueue: VecDeque<u16>,
     pub totalQueued: u32,
     pub packetSize: usize,
     pub headerFlags: u16,
     pub commands: [ENetProtocol; ENET_PROTOCOL_MAXIMUM_PACKET_COMMANDS as usize],
     pub commandCount: usize,
-    pub buffers: [ENetBuffer<'a>; ENET_BUFFER_MAXIMUM as usize],
+    pub buffers: [ENetBuffer; ENET_BUFFER_MAXIMUM as usize],
     pub bufferCount: usize,
-    pub checksum: Option<fn(&mut [Vec<u8>], usize) -> u32>,
+    pub checksum: Option<fn(&mut [ENetBuffer], usize) -> u32>,
     pub compressor: ENetCompressor,
     pub packetData: [[u8; ENET_PROTOCOL_MAXIMUM_MTU as usize]; 2],
     pub receivedAddress: ENetAddress,

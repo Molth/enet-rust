@@ -177,7 +177,7 @@ pub union ENetProtocol {
 impl Default for ENetProtocol {
     fn default() -> Self {
         Self {
-            header: ENetProtocolCommandHeader::default()
+            header: ENetProtocolCommandHeader::default(),
         }
     }
 }

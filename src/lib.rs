@@ -12,6 +12,9 @@ mod include {
 
 mod c {
     pub mod c_host;
+    pub mod c_packet;
+    pub mod c_peer;
+    pub mod c_protocol;
     pub mod c_win32;
 }
 
@@ -24,4 +27,7 @@ pub use include::h_utility;
 pub use include::h_win32;
 
 pub use c::c_host;
+pub use c::c_packet;
+pub use c::c_peer;
+pub use c::c_protocol;
 pub use c::c_win32;

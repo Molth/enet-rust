@@ -79,7 +79,7 @@ pub fn enet_socket_send(
         0 => 0,
 
         1 => {
-            let buffer = &buffers[0].data;
+            let buffer = &buffers[0].data.borrow()[..buffers[0].dataLength];
             match socket.send_to::<SocketAddr>(buffer, (*address).into()) {
                 Ok(len) => len as i32,
                 Err(_) => -1,
@@ -90,13 +90,14 @@ pub fn enet_socket_send(
             let total_len: usize = buffers
                 .iter()
                 .take(bufferCount)
-                .map(|buf| buf.data.len())
+                .map(|buf| buf.dataLength)
                 .sum();
 
             let mut merged = Vec::with_capacity(total_len);
 
             for buf in buffers.iter().take(bufferCount) {
-                merged.extend_from_slice(buf.data);
+                let data = &buf.data.borrow()[..buf.dataLength];
+                merged.extend_from_slice(&data);
             }
 
             match socket.send_to::<SocketAddr>(&merged, (*address).into()) {
@@ -117,8 +118,8 @@ pub fn enet_socket_receive(
         0 => 0,
 
         1 => {
-            let buffer = &mut buffers[0].data;
-            match socket.recv_from(*buffer) {
+            let buffer = &mut buffers[0].data.borrow_mut()[..buffers[0].dataLength];
+            match socket.recv_from(&mut *buffer) {
                 Ok((len, addr)) => {
                     *address = ENetAddress::from(addr);
                     len as i32
@@ -132,7 +133,7 @@ pub fn enet_socket_receive(
             let total_len: usize = buffers
                 .iter()
                 .take(bufferCount)
-                .map(|buf| buf.data.len())
+                .map(|buf| buf.dataLength)
                 .sum();
 
             let mut merged = vec![0; total_len];
@@ -143,14 +144,15 @@ pub fn enet_socket_receive(
 
                     let mut offset = 0;
                     for buf in buffers.iter_mut().take(bufferCount) {
-                        let buf_len = buf.data.len();
+                        let data = &mut buf.data.borrow_mut()[..buf.dataLength];
+                        let buf_len = data.len();
                         if offset + buf_len <= len {
-                            buf.data.copy_from_slice(&merged[offset..offset + buf_len]);
+                            data.copy_from_slice(&merged[offset..offset + buf_len]);
                             offset += buf_len;
                         } else {
                             let remaining = len - offset;
                             if remaining > 0 {
-                                buf.data[..remaining]
+                                data[..remaining]
                                     .copy_from_slice(&merged[offset..offset + remaining]);
                             }
 

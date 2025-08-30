@@ -1,4 +1,9 @@
-﻿use std::mem::zeroed;
+﻿#![allow(non_snake_case)]
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub const INVALID_SOCKET: isize = !0;
 
@@ -20,8 +25,9 @@ pub fn enet_net_to_host_32(network: u32) -> u32 {
     u32::from_be(network)
 }
 
-pub struct ENetBuffer<'a> {
-    pub data: &'a mut [u8],
+pub struct ENetBuffer {
+    pub data: Rc<RefCell<[u8]>>,
+    pub dataLength: usize,
 }
 
 pub struct ENetPacket {
