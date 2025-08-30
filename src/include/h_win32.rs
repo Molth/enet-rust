@@ -2,34 +2,38 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
 pub const INVALID_SOCKET: isize = !0;
 
 pub const ENET_SOCKET_NULL: isize = INVALID_SOCKET;
 
-pub fn enet_host_to_net_16(host: u16) -> u16 {
+pub fn ENET_HOST_TO_NET_16(host: u16) -> u16 {
     host.to_be()
 }
 
-pub fn enet_host_to_net_32(host: u32) -> u32 {
+pub fn ENET_HOST_TO_NET_32(host: u32) -> u32 {
     host.to_be()
 }
 
-pub fn enet_net_to_host_16(network: u16) -> u16 {
+pub fn ENET_NET_TO_HOST_16(network: u16) -> u16 {
     u16::from_be(network)
 }
 
-pub fn enet_net_to_host_32(network: u32) -> u32 {
+pub fn ENET_NET_TO_HOST_32(network: u32) -> u32 {
     u32::from_be(network)
 }
 
+#[derive(Copy, Clone, Default)]
 pub struct ENetBuffer {
-    pub data: Rc<RefCell<[u8]>>,
+    pub dataID: usize,
     pub dataLength: usize,
 }
 
-pub struct ENetPacket {
-    pub data: Vec<u8>,
+impl ENetBuffer {
+    pub fn as_slice<'a>(&self, data: &[&'a [u8]]) -> &'a [u8] {
+        &data[self.dataID][..self.dataLength]
+    }
+
+    pub fn as_mut_slice<'a>(&mut self, data: &'a mut [&'a mut [u8]]) -> &'a mut [u8] {
+        &mut data[self.dataID][..self.dataLength]
+    }
 }

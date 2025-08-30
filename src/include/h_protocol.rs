@@ -46,7 +46,7 @@ pub enum ENetProtocolFlag {
     ENET_PROTOCOL_HEADER_SESSION_SHIFT = 12,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ENetProtocolHeader {
     pub peerID: u16,
     pub sentTime: u16,

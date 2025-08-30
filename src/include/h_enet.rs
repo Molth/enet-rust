@@ -185,7 +185,8 @@ pub struct ENetPacket {
     pub referenceCount: usize,
     pub flags: u32,
     pub data: Option<Rc<RefCell<Box<[u8]>>>>,
-    pub freeCallback: Option<fn()>,
+    pub dataLength: usize,
+    pub freeCallback: Option<fn(ENetPacket)>,
     pub userData: Option<fn(Box<dyn Any>)>,
 }
 
@@ -368,7 +369,7 @@ pub struct ENetHost {
     pub mtu: u32,
     pub randomSeed: u32,
     pub recalculateBandwidthLimits: i32,
-    pub peers: Vec<ENetPeer>,
+    pub peers: Box<[ENetPeer]>,
     pub channelLimit: usize,
     pub serviceTime: u32,
     pub dispatchQueue: VecDeque<u16>,

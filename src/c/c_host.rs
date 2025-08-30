@@ -11,13 +11,15 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 
 pub fn enet_host_ping(host: &ENetHost, address: &ENetAddress) -> bool {
-    let data = [0u8; 1];
+    let data: [u8; 1] = [0u8; 1];
+    let data_slices: [&[u8]; 1] = [&data[..]];
+
     let buffer = ENetBuffer {
-        data: Rc::new(RefCell::new(data)),
+        dataID: 0,
         dataLength: 1,
     };
 
-    if enet_socket_send(&host.socket, address, &[buffer], 1) > 0 {
+    if enet_socket_send(&host.socket, address, &data_slices, &[buffer], 1) > 0 {
         true
     } else {
         false
@@ -55,22 +57,11 @@ pub fn enet_host_create(
         ENET_HOST_SEND_BUFFER_SIZE as i32,
     );
 
-    if !(channelLimit != 0) || channelLimit > ENET_PROTOCOL_MAXIMUM_CHANNEL_COUNT as usize {
+    if !(channelLimit != 0) || channelLimit > (ENET_PROTOCOL_MAXIMUM_CHANNEL_COUNT as usize) {
         channelLimit = ENET_PROTOCOL_MAXIMUM_CHANNEL_COUNT as usize;
     } else if channelLimit < ENET_PROTOCOL_MINIMUM_CHANNEL_COUNT as usize {
         channelLimit = ENET_PROTOCOL_MINIMUM_CHANNEL_COUNT as usize;
     }
-
-    let mut buffers = Vec::with_capacity(ENET_BUFFER_MAXIMUM as usize);
-    for _ in 0..ENET_BUFFER_MAXIMUM as usize {
-        buffers.push(ENetBuffer {
-            data: Rc::new(RefCell::new([])),
-            dataLength: 0,
-        });
-    }
-
-    let buffers: [ENetBuffer; ENET_BUFFER_MAXIMUM as usize] =
-        buffers.try_into().unwrap_or_else(|_| unreachable!());
 
     let mut host = ENetHost {
         socket,
@@ -81,7 +72,7 @@ pub fn enet_host_create(
         mtu: ENET_HOST_DEFAULT_MTU,
         randomSeed: 0,
         recalculateBandwidthLimits: 0,
-        peers: Vec::with_capacity(peerCount),
+        peers: Box::default(),
         channelLimit,
         serviceTime: 0,
         dispatchQueue: VecDeque::new(),
@@ -90,7 +81,7 @@ pub fn enet_host_create(
         headerFlags: 0,
         commands: [ENetProtocol::default(); ENET_PROTOCOL_MAXIMUM_PACKET_COMMANDS as usize],
         commandCount: 0,
-        buffers,
+        buffers: [ENetBuffer::default(); ENET_BUFFER_MAXIMUM as usize],
         bufferCount: 0,
         checksum: None,
         compressor: ENetCompressor::new(),
@@ -117,8 +108,10 @@ pub fn enet_host_create(
     let rc = Rc::new(RefCell::new(host));
     let mut host = rc.borrow_mut();
 
+    let mut peers = Vec::with_capacity(peerCount);
+
     for i in 0..peerCount {
-        host.peers.push(ENetPeer {
+        peers.push(ENetPeer {
             host: rc.clone(),
             outgoingPeerID: 0,
             incomingPeerID: i as u16,
@@ -180,6 +173,8 @@ pub fn enet_host_create(
             totalWaitingData: 0,
         });
     }
+
+    host.peers = peers.into_boxed_slice();
 
     drop(host);
     Some(rc)

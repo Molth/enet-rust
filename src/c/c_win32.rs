@@ -72,6 +72,7 @@ pub fn enet_socket_destroy(socket: UdpSocket) {
 pub fn enet_socket_send(
     socket: &UdpSocket,
     address: &ENetAddress,
+    data: &[&[u8]],
     buffers: &[ENetBuffer],
     bufferCount: usize,
 ) -> i32 {
@@ -79,7 +80,7 @@ pub fn enet_socket_send(
         0 => 0,
 
         1 => {
-            let buffer = &buffers[0].data.borrow()[..buffers[0].dataLength];
+            let buffer = buffers[0].as_slice(data);
             match socket.send_to::<SocketAddr>(buffer, (*address).into()) {
                 Ok(len) => len as i32,
                 Err(_) => -1,
@@ -96,8 +97,8 @@ pub fn enet_socket_send(
             let mut merged = Vec::with_capacity(total_len);
 
             for buf in buffers.iter().take(bufferCount) {
-                let data = &buf.data.borrow()[..buf.dataLength];
-                merged.extend_from_slice(&data);
+                let buffer = buf.as_slice(data);
+                merged.extend_from_slice(buffer);
             }
 
             match socket.send_to::<SocketAddr>(&merged, (*address).into()) {
@@ -108,9 +109,10 @@ pub fn enet_socket_send(
     }
 }
 
-pub fn enet_socket_receive(
+pub fn enet_socket_receive<'a>(
     socket: &UdpSocket,
     address: &mut ENetAddress,
+    data: &'a mut [&'a mut [u8]],
     buffers: &mut [ENetBuffer],
     bufferCount: usize,
 ) -> i32 {
@@ -118,7 +120,7 @@ pub fn enet_socket_receive(
         0 => 0,
 
         1 => {
-            let buffer = &mut buffers[0].data.borrow_mut()[..buffers[0].dataLength];
+            let buffer = &mut buffers[0].as_mut_slice(data);
             match socket.recv_from(&mut *buffer) {
                 Ok((len, addr)) => {
                     *address = ENetAddress::from(addr);
@@ -141,18 +143,17 @@ pub fn enet_socket_receive(
             match socket.recv_from(&mut merged) {
                 Ok((len, addr)) => {
                     *address = ENetAddress::from(addr);
-
                     let mut offset = 0;
                     for buf in buffers.iter_mut().take(bufferCount) {
-                        let data = &mut buf.data.borrow_mut()[..buf.dataLength];
-                        let buf_len = data.len();
+                        let buffer = &mut data[buf.dataID][..buf.dataLength];
+                        let buf_len = buffer.len();
                         if offset + buf_len <= len {
-                            data.copy_from_slice(&merged[offset..offset + buf_len]);
+                            buffer.copy_from_slice(&merged[offset..offset + buf_len]);
                             offset += buf_len;
                         } else {
                             let remaining = len - offset;
                             if remaining > 0 {
-                                data[..remaining]
+                                buffer[..remaining]
                                     .copy_from_slice(&merged[offset..offset + remaining]);
                             }
 
