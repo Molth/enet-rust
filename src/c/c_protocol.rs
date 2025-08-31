@@ -35,8 +35,7 @@ pub fn enet_protocol_change_state(
     peer: &mut ENetPeer,
     state: ENetPeerState,
 ) {
-    // todo
-    peer.state = state;
+    todo!()
 }
 
 pub fn enet_protocol_dispatch_state(
@@ -61,7 +60,7 @@ pub fn enet_protocol_dispatch_incoming_commands(
     host: &Rc<RefCell<ENetHost>>,
     event: &mut ENetEvent,
 ) {
-    // todo
+    todo!()
 }
 
 pub fn enet_protocol_notify_connect(
@@ -69,7 +68,7 @@ pub fn enet_protocol_notify_connect(
     peer: &mut ENetPeer,
     event: &mut ENetEvent,
 ) {
-    // todo
+    todo!()
 }
 
 pub fn enet_protocol_notify_disconnect(
@@ -77,12 +76,28 @@ pub fn enet_protocol_notify_disconnect(
     peer: &mut ENetPeer,
     event: &mut ENetEvent,
 ) {
-    // todo
+    todo!()
 }
 
 pub fn enet_protocol_remove_sent_unreliable_commands(
     peer: &mut ENetPeer,
     sentUnreliableCommands: &mut VecDeque<ENetOutgoingCommand>,
 ) {
-    // todo
+    todo!()
+}
+
+pub fn enet_protocol_find_sent_reliable_command(
+    list: &VecDeque<ENetOutgoingCommand>,
+    reliableSequenceNumber: u16,
+    channelID: u8,
+) -> usize {
+    todo!()
+}
+
+pub fn enet_protocol_remove_sent_reliable_command(
+    peer: &mut ENetPeer,
+    reliableSequenceNumber: u16,
+    channelID: u8,
+) -> usize {
+    todo!()
 }
