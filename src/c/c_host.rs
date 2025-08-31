@@ -6,9 +6,7 @@ use crate::c_win32::*;
 use crate::h_enet::*;
 use crate::h_protocol::*;
 use crate::h_win32::*;
-use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::rc::Rc;
 
 pub fn enet_host_ping(host: &ENetHost, address: &ENetAddress) -> bool {
     let data: [u8; 1] = [0u8; 1];
@@ -32,7 +30,7 @@ pub fn enet_host_create(
     mut channelLimit: usize,
     incomingBandwidth: u32,
     outgoingBandwidth: u32,
-) -> Option<Rc<RefCell<ENetHost>>> {
+) -> Option<ENetHost> {
     if peerCount > ENET_PROTOCOL_MAXIMUM_PEER_ID as usize {
         return None;
     }
@@ -105,14 +103,10 @@ pub fn enet_host_create(
     host.randomSeed = host.randomSeed.wrapping_add(enet_host_random_seed());
     host.randomSeed = (host.randomSeed << 16) | (host.randomSeed >> 16);
 
-    let rc = Rc::new(RefCell::new(host));
-    let mut host = rc.borrow_mut();
-
     let mut peers = Vec::with_capacity(peerCount);
 
     for i in 0..peerCount {
         peers.push(ENetPeer {
-            host: rc.clone(),
             outgoingPeerID: 0,
             incomingPeerID: i as u16,
             connectID: 0,
@@ -176,8 +170,7 @@ pub fn enet_host_create(
 
     host.peers = peers.into_boxed_slice();
 
-    drop(host);
-    Some(rc)
+    Some(host)
 }
 
 pub fn enet_host_destroy(host: ENetHost) {

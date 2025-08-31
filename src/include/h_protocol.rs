@@ -159,25 +159,23 @@ pub struct ENetProtocolSendFragment {
 }
 
 #[derive(Copy, Clone)]
-pub union ENetProtocol {
-    pub header: ENetProtocolCommandHeader,
-    pub acknowledge: ENetProtocolAcknowledge,
-    pub connect: ENetProtocolConnect,
-    pub verifyConnect: ENetProtocolVerifyConnect,
-    pub disconnect: ENetProtocolDisconnect,
-    pub ping: ENetProtocolPing,
-    pub sendReliable: ENetProtocolSendReliable,
-    pub sendUnreliable: ENetProtocolSendUnreliable,
-    pub sendUnsequenced: ENetProtocolSendUnsequenced,
-    pub sendFragment: ENetProtocolSendFragment,
-    pub bandwidthLimit: ENetProtocolBandwidthLimit,
-    pub throttleConfigure: ENetProtocolThrottleConfigure,
+pub enum ENetProtocol {
+    header(ENetProtocolCommandHeader),
+    acknowledge(ENetProtocolAcknowledge),
+    connect(ENetProtocolConnect),
+    verifyConnect(ENetProtocolVerifyConnect),
+    disconnect(ENetProtocolDisconnect),
+    ping(ENetProtocolPing),
+    sendReliable(ENetProtocolSendReliable),
+    sendUnreliable(ENetProtocolSendUnreliable),
+    sendUnsequenced(ENetProtocolSendUnsequenced),
+    sendFragment(ENetProtocolSendFragment),
+    bandwidthLimit(ENetProtocolBandwidthLimit),
+    throttleConfigure(ENetProtocolThrottleConfigure),
 }
 
 impl Default for ENetProtocol {
     fn default() -> Self {
-        Self {
-            header: ENetProtocolCommandHeader::default(),
-        }
+        ENetProtocol::header(ENetProtocolCommandHeader::default())
     }
 }

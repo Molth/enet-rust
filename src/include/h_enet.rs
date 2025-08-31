@@ -279,7 +279,6 @@ pub enum ENetPeerFlag {
 }
 
 pub struct ENetPeer {
-    pub host: Rc<RefCell<ENetHost>>,
     pub outgoingPeerID: u16,
     pub incomingPeerID: u16,
     pub connectID: u32,
@@ -396,6 +395,16 @@ pub struct ENetHost {
     pub duplicatePeers: usize,
     pub maximumPacketSize: usize,
     pub maximumWaitingData: usize,
+}
+
+impl ENetHost {
+    pub fn get_peer(&self, incomingPeerID: u16) -> &ENetPeer {
+        &self.peers[incomingPeerID as usize]
+    }
+
+    pub fn get_mut_peer(&mut self, incomingPeerID: u16) -> &mut ENetPeer {
+        &mut self.peers[incomingPeerID as usize]
+    }
 }
 
 #[repr(u32)]
