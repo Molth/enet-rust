@@ -2,6 +2,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
+use crate::enet_host_get_mut_peer;
 use crate::h_enet::ENetPeerFlag::*;
 use crate::h_enet::*;
 use crate::h_protocol::ENetProtocolCommand::*;
@@ -29,7 +30,6 @@ pub fn enet_protocol_command_size(commandNumber: u8) -> usize {
 }
 
 pub fn enet_protocol_change_state(host: &mut ENetHost, incomingPeerID: u16, state: ENetPeerState) {
-    let peer = host.get_mut_peer(incomingPeerID);
     todo!()
 }
 
@@ -40,7 +40,7 @@ pub fn enet_protocol_dispatch_state(
 ) {
     enet_protocol_change_state(host, incomingPeerID, state);
 
-    let peer = host.get_mut_peer(incomingPeerID);
+    let peer = enet_host_get_mut_peer!(host, incomingPeerID);
     if !(((peer.flags as u32) & (ENET_PEER_FLAG_NEEDS_DISPATCH as u32)) != 0) {
         host.dispatchQueue.push_back(peer.incomingPeerID);
         let mut flags = peer.flags as u32;

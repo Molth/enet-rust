@@ -397,14 +397,18 @@ pub struct ENetHost {
     pub maximumWaitingData: usize,
 }
 
-impl ENetHost {
-    pub fn get_peer(&self, incomingPeerID: u16) -> &ENetPeer {
-        &self.peers[incomingPeerID as usize]
-    }
+#[macro_export]
+macro_rules! enet_host_get_peer {
+    ($host:expr, $incomingPeerID:expr) => {
+        &$host.peers[$incomingPeerID as usize]
+    };
+}
 
-    pub fn get_mut_peer(&mut self, incomingPeerID: u16) -> &mut ENetPeer {
-        &mut self.peers[incomingPeerID as usize]
-    }
+#[macro_export]
+macro_rules! enet_host_get_mut_peer {
+    ($host:expr, $incomingPeerID:expr) => {
+        &mut $host.peers[$incomingPeerID as usize]
+    };
 }
 
 #[repr(u32)]
