@@ -30,12 +30,13 @@ pub fn enet_host_create(
     mut channelLimit: usize,
     incomingBandwidth: u32,
     outgoingBandwidth: u32,
+    option: ENetHostOption,
 ) -> Option<ENetHost> {
     if peerCount > ENET_PROTOCOL_MAXIMUM_PEER_ID as usize {
         return None;
     }
 
-    let socket = match enet_socket_create(address) {
+    let socket = match enet_socket_create(address, option) {
         Ok(x) => x,
         Err(_) => return None,
     };

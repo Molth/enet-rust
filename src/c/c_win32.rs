@@ -3,9 +3,10 @@
 #![allow(non_camel_case_types)]
 
 use crate::h_enet::ENetSocketWait::*;
-use crate::h_enet::{ENetAddress, ENetSocketOption};
+use crate::h_enet::{ENetAddress, ENetHostOption, ENetSocketOption};
 use crate::h_system::timeGetTime;
 use crate::h_win32::ENetBuffer;
+use crate::{enet_buffer_as_mut_slice, enet_buffer_as_slice};
 use std::io::Error;
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -41,8 +42,19 @@ pub fn enet_socket_get_address(socket: &UdpSocket, address: &mut ENetAddress) ->
     }
 }
 
-pub fn enet_socket_create(address: &ENetAddress) -> Result<UdpSocket, Error> {
-    UdpSocket::bind::<SocketAddr>((*address).into())
+pub fn enet_socket_create(
+    address: &ENetAddress,
+    option: ENetHostOption,
+) -> Result<UdpSocket, Error> {
+    match option {
+        ENetHostOption::ENET_HOSTOPT_IPV4 => {
+            UdpSocket::bind::<SocketAddr>((*address).try_parse_ipv4()?)
+        }
+
+        ENetHostOption::ENET_HOSTOPT_IPV6_ONLY | ENetHostOption::ENET_HOSTOPT_IPV6_DUALMODE => {
+            UdpSocket::bind::<SocketAddr>((*address).parse_ipv6())
+        }
+    }
 }
 
 pub fn enet_socket_set_option(
@@ -80,28 +92,35 @@ pub fn enet_socket_send(
         0 => 0,
 
         1 => {
-            let buffer = buffers[0].as_slice(data);
-            match socket.send_to::<SocketAddr>(buffer, (*address).into()) {
+            let buffer = enet_buffer_as_slice!(buffers[0], data);
+
+            let result = address.try_parse_any_by_socket(socket);
+            let socketAddr = match result {
+                Ok(x) => x,
+                Err(e) => panic!("{}", e),
+            };
+
+            match socket.send_to::<SocketAddr>(buffer, socketAddr) {
                 Ok(len) => len as i32,
                 Err(_) => -1,
             }
         }
 
         _ => {
-            let total_len: usize = buffers
+            let merged: Vec<u8> = buffers
                 .iter()
                 .take(bufferCount)
-                .map(|buf| buf.dataLength)
-                .sum();
+                .flat_map(|buf| enet_buffer_as_slice!(buf, data))
+                .copied()
+                .collect();
 
-            let mut merged = Vec::with_capacity(total_len);
+            let result = address.try_parse_any_by_socket(socket);
+            let socketAddr = match result {
+                Ok(x) => x,
+                Err(e) => panic!("{}", e),
+            };
 
-            for buf in buffers.iter().take(bufferCount) {
-                let buffer = buf.as_slice(data);
-                merged.extend_from_slice(buffer);
-            }
-
-            match socket.send_to::<SocketAddr>(&merged, (*address).into()) {
+            match socket.send_to::<SocketAddr>(&merged, socketAddr) {
                 Ok(len) => len as i32,
                 Err(_) => -1,
             }
@@ -120,7 +139,7 @@ pub fn enet_socket_receive<'a>(
         0 => 0,
 
         1 => {
-            let buffer = &mut buffers[0].as_mut_slice(data);
+            let buffer = enet_buffer_as_mut_slice!(buffers[0], data);
             match socket.recv_from(&mut *buffer) {
                 Ok((len, addr)) => {
                     *address = ENetAddress::from(addr);
@@ -145,7 +164,7 @@ pub fn enet_socket_receive<'a>(
                     *address = ENetAddress::from(addr);
                     let mut offset = 0;
                     for buf in buffers.iter_mut().take(bufferCount) {
-                        let buffer = &mut data[buf.dataID][..buf.dataLength];
+                        let buffer = enet_buffer_as_mut_slice!(buf, data);
                         let buf_len = buffer.len();
                         if offset + buf_len <= len {
                             buffer.copy_from_slice(&merged[offset..offset + buf_len]);
@@ -196,7 +215,7 @@ pub fn enet_socket_wait(socket: &UdpSocket, condition: &mut u32) -> bool {
 }
 
 pub fn enet_address_get_host_ip(address: &ENetAddress, ip: &mut [u8]) -> bool {
-    let addr: SocketAddr = (*address).into();
+    let addr: SocketAddr = address.parse_any();
     let bytes = addr.ip().to_string().into_bytes();
 
     if bytes.len() > ip.len() {
@@ -208,7 +227,7 @@ pub fn enet_address_get_host_ip(address: &ENetAddress, ip: &mut [u8]) -> bool {
 }
 
 pub fn enet_address_get_host(address: &ENetAddress, hostName: &mut [u8]) -> bool {
-    let addr: SocketAddr = (*address).into();
+    let addr: SocketAddr = address.parse_any();
     let bytes = addr.ip().to_string().into_bytes();
 
     if bytes.len() > hostName.len() {

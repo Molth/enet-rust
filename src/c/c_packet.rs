@@ -2,6 +2,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
+use crate::enet_buffer_as_slice;
 use crate::h_enet::ENetPacket;
 use crate::h_enet::ENetPacketFlag::ENET_PACKET_FLAG_NO_ALLOCATE;
 use crate::h_win32::ENetBuffer;
@@ -9,17 +10,13 @@ use crate::h_win32::ENET_HOST_TO_NET_32;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn enet_packet_create(
-    data: Rc<RefCell<Box<[u8]>>>,
-    dataLength: usize,
-    flags: u32,
-) -> ENetPacket {
+pub fn enet_packet_create(data: Rc<RefCell<Vec<u8>>>, dataLength: usize, flags: u32) -> ENetPacket {
     let data = if (flags & ENET_PACKET_FLAG_NO_ALLOCATE as u32) != 0 {
         Some(Rc::clone(&data))
     } else if data.borrow().len() <= 0 {
         None
     } else {
-        Some(Rc::new(RefCell::new(data.borrow().as_ref().into())))
+        Some(Rc::new(RefCell::new(data.borrow().clone())))
     };
 
     ENetPacket {
@@ -46,7 +43,7 @@ pub fn enet_packet_resize(packet: &mut ENetPacket, dataLength: usize) {
         return;
     }
 
-    let mut new_data = vec![0u8; dataLength].into_boxed_slice();
+    let mut new_data = vec![0u8; dataLength];
 
     if let Some(ref data_rc) = packet.data {
         let old_data = data_rc.borrow();
@@ -98,7 +95,7 @@ pub fn enet_crc32(data: &[&[u8]], buffers: &[ENetBuffer], bufferCount: usize) ->
     let mut crc: u32 = 0xFFFFFFFF;
 
     for buffer in buffers.iter().take(bufferCount) {
-        let slice = buffer.as_slice(data);
+        let slice = enet_buffer_as_slice!(buffer, data);
         for &byte in slice {
             crc = (crc >> 8) ^ crcTable[(((crc as i32) & 0xFF) ^ (byte as i32)) as usize];
         }

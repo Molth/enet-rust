@@ -28,12 +28,16 @@ pub struct ENetBuffer {
     pub dataLength: usize,
 }
 
-impl ENetBuffer {
-    pub fn as_slice<'a>(&self, data: &[&'a [u8]]) -> &'a [u8] {
-        &data[self.dataID][..self.dataLength]
-    }
+#[macro_export]
+macro_rules! enet_buffer_as_slice {
+    ($buffer:expr, $data:expr) => {
+        &$data[$buffer.dataID][..$buffer.dataLength]
+    };
+}
 
-    pub fn as_mut_slice<'a>(&mut self, data: &'a mut [&'a mut [u8]]) -> &'a mut [u8] {
-        &mut data[self.dataID][..self.dataLength]
-    }
+#[macro_export]
+macro_rules! enet_buffer_as_mut_slice {
+    ($buffer:expr, $data:expr) => {
+        &mut $data[$buffer.dataID][..$buffer.dataLength]
+    };
 }

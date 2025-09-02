@@ -4,9 +4,12 @@
 
 use crate::h_protocol::*;
 use crate::h_win32::ENetBuffer;
+use io::Error;
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::io;
+use std::io::ErrorKind;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, UdpSocket};
 use std::rc::Rc;
 
@@ -45,6 +48,13 @@ pub enum ENetSocketWait {
     ENET_SOCKET_WAIT_SEND = 1 << 0,
     ENET_SOCKET_WAIT_RECEIVE = 1 << 1,
     ENET_SOCKET_WAIT_INTERRUPT = 1 << 2,
+}
+
+#[repr(u32)]
+pub enum ENetHostOption {
+    ENET_HOSTOPT_IPV4 = 0,
+    ENET_HOSTOPT_IPV6_ONLY = 1,
+    ENET_HOSTOPT_IPV6_DUALMODE = 2,
 }
 
 #[repr(u32)]
@@ -98,37 +108,43 @@ impl ENetAddress {
         !self.is_ipv4()
     }
 
-    pub fn try_into(&self, socket: UdpSocket) -> Option<SocketAddr> {
-        match socket.local_addr() {
-            Ok(addr) => {
-                return if addr.is_ipv6() {
-                    Some(self.into_ipv6())
-                } else {
-                    self.try_into_ipv4()
-                }
-            }
-
-            Err(_) => {}
-        }
-
-        None
+    pub fn try_parse_any_by_socket(&self, socket: &UdpSocket) -> Result<SocketAddr, Error> {
+        self.try_parse_any_by_ipv6(socket.local_addr()?.is_ipv6())
     }
 
-    pub fn try_into_ipv4(&self) -> Option<SocketAddr> {
+    pub fn try_parse_any_by_ipv6(&self, is_ipv6: bool) -> Result<SocketAddr, Error> {
+        match is_ipv6 {
+            true => Ok(self.parse_ipv6()),
+            false => self.try_parse_ipv4(),
+        }
+    }
+
+    pub fn try_parse_ipv4(&self) -> Result<SocketAddr, Error> {
         if self.is_ipv4() {
-            return Some(self.into_ipv4());
+            return Ok(self.parse_ipv4());
         }
 
-        None
+        Err(Error::new(
+            ErrorKind::AddrNotAvailable,
+            "AddressFamilyNotSupported",
+        ))
     }
 
-    pub fn into_ipv4(self) -> SocketAddr {
+    pub fn parse_any(&self) -> SocketAddr {
+        if self.is_ipv4() {
+            self.parse_ipv4()
+        } else {
+            self.parse_ipv6()
+        }
+    }
+
+    pub fn parse_ipv4(&self) -> SocketAddr {
         let bytes: [u8; 4] = self.host[12..16].try_into().unwrap();
         let ipv4 = Ipv4Addr::from(bytes);
         SocketAddr::V4(SocketAddrV4::new(ipv4, self.port))
     }
 
-    pub fn into_ipv6(self) -> SocketAddr {
+    pub fn parse_ipv6(&self) -> SocketAddr {
         let ipv6 = Ipv6Addr::from(self.host);
         SocketAddr::V6(SocketAddrV6::new(ipv6, self.port, 0, self.scopeID))
     }
@@ -161,16 +177,6 @@ impl From<SocketAddr> for ENetAddress {
     }
 }
 
-impl Into<SocketAddr> for ENetAddress {
-    fn into(self) -> SocketAddr {
-        if self.is_ipv4() {
-            self.into_ipv4()
-        } else {
-            self.into_ipv6()
-        }
-    }
-}
-
 #[repr(u32)]
 pub enum ENetPacketFlag {
     ENET_PACKET_FLAG_RELIABLE = 1 << 0,
@@ -184,7 +190,7 @@ pub enum ENetPacketFlag {
 pub struct ENetPacket {
     pub referenceCount: usize,
     pub flags: u32,
-    pub data: Option<Rc<RefCell<Box<[u8]>>>>,
+    pub data: Option<Rc<RefCell<Vec<u8>>>>,
     pub dataLength: usize,
     pub freeCallback: Option<fn(ENetPacket)>,
     pub userData: Option<fn(Box<dyn Any>)>,
